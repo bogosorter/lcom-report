@@ -18,7 +18,9 @@ Our version adds play/pause functionality and a high score board that records th
 
 ![Seed Feature](./images/Captura%20de%20ecrã%202025-05-31%20153251.png)
 
-Video link
+## Video link
+
+To watch our demo video [click here](https://uporto.cloud.panopto.eu/Panopto/Pages/Viewer.aspx?id=1e4335f1-e450-409f-bbb0-b2ee01204623)
 
 ## Controls
 
