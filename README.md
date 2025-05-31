@@ -4,7 +4,19 @@ _debugassaurus_ is an endless runner inspired by the Google Chrome Dino game. Th
 
 Our version adds play/pause functionality and a high score board that records the seed used for each score. Players can replay specific runs by using a hidden feature: in the main menu, pressing a number key reveals a seed input field.
 
-Screenshot
+## Screenshots
+
+![Main Menu](./images/Captura%20de%20ecrã%202025-05-31%20153224.png)
+
+![Gameplay](./images/Captura%20de%20ecrã%202025-05-31%20153908.png)
+
+![Play/Pause](./images/Captura%20de%20ecrã%202025-05-31%20153321.png)
+
+![High Scores](./images/Captura%20de%20ecrã%202025-05-31%20153151.png)
+
+![Record Highscore](./images/Captura%20de%20ecrã%202025-05-31%20153927.png)
+
+![Seed Feature](./images/Captura%20de%20ecrã%202025-05-31%20153251.png)
 
 Video link
 
