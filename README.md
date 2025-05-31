@@ -8,6 +8,11 @@ Screenshot
 
 Video link
 
+## Controls
+
+- `space` to jump. If `space` remains pressed the dino will keep jumping
+- `esc` to pause
+
 ## Project Structure
 
 The project follows an MVC pattern, and is therefore divided in three main modules: state, graphics and controller. As such, the logic in the main loop is reduced to these simples lines:
@@ -147,11 +152,7 @@ if (keyboard_consume(CHARACTER, &c)) {
 }
 ```
 
-**Mouse:** Used for navigation in menus.
-
-**Video Card:** Used to display the game
-
-This is an excerpt of `cursor.c`, which deals with both the mouse and the video card:
+**Mouse:** Used for navigation in menus. Here's an excerpt from cursor.c:
 
 ```c
 void cursor_update() {
@@ -178,6 +179,19 @@ void cursor_update() {
         }
     }
 }
+```
+
+**Video Card:** Used to display the game. We used the idexed mode 0x105, with the reasoning that only writing one byte per pixel improves the performance of the game. Our implementation uses page flipping to avoid visual artifacts.
+
+```c
+// Clear the second buffer
+vg_clear();
+
+// Other vg calls that draw the game
+// ...
+
+// Flip the buffers in between retraces
+vg_flip();
 ```
 
 **Real Time Clock** Used to get the date to be kept in a highscore. The simple API that is exposed is this:
