@@ -1,4 +1,4 @@
-# debugassauru
+# debugassaurus
 
 _debugassaurus_ is an endless runner inspired by the Google Chrome Dino game. The player must survive as long as possible while avoiding cacti and pterodactyls.
 
