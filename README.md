@@ -10,6 +10,87 @@ Video link
 
 ## Project Structure
 
+The project follows an MVC pattern, and is therefore divided in three main modules: state, graphics and controller. As such, the logic in the main loop is reduced to these simples lines:
+
+```c
+int(proj_main_loop)(int argc, char* argv []) {
+    // Initialize drivers
+    // ...
+
+    state_menu();
+    cursor_reset();
+
+    update_handler* handlers = get_update_handlers();
+    while (state_get_screen() != EXIT) {
+        // Handle interrupts
+        // ...
+
+        // Once every frame
+        handlers[state_get_screen()]();
+        graphics_frame();
+    }
+
+    // Unmount drivers
+}
+```
+
+### State
+
+_debugassaurus_ has various screens. Each of those is represented as a variable in the `screen_t` enum. Each of those screens, though, needs a different representation of the state. The main menu, for instance, needs to know which buttons exist, while the game screen need to know what the world looks like and where the dino is. We could use a number of unused fields in a structure, but that would be a waste of space. Instead, we opt to use a union to represent the different states of the game. The problem this creates is that one must be careful to not access wrong fields in the union. Common variables (current screen and cursor position, which should be kept accross screens) are stored outside the union.
+
+```c
+struct state {
+    // Common types
+    screen_t screen;
+    cursor_position_t cursor;
+
+    union {
+        struct {
+            uint8_t button_count;
+            button_t** buttons;
+            char seed_input[16];
+        } menu;
+
+        struct {
+            dino_t* dino;
+            tile_t* first_tile;
+            background_tile_t* first_background;
+            uint32_t seed;
+            bool paused;
+        } game;
+        
+        // ...
+    } data;
+};
+```
+
+Externally, the state exposes a set of getters and setters that give access to the state variables. There are also some functions that allow to switch between different states, like `state_main_menu()` and `state_highscores()`.
+
+#### World generation
+
+_debugassaurus_ presents an interesting challenge in terms of world representation, since it is an endless runner. The obstacles are represented as a linked list of `tile`s. While the `tile` class tile would be enough, the `world` class abstracts the world creation logic. This way, parts of the program that do not know about the state internals can call `world_get_next(tile_t* tile)` to get the next tile in the world, and it will in fact always return a tile, as if all the tiles were pre-generated.
+
+### Graphics
+
+...
+
+### Controller
+
+The game is represented by a number of states (see above). For each of those states, the controller defines an update handler whose index is the same as the screen_t enum value. The update handler should be called once every frame.
+
+```c
+typedef void (*update_handler)();
+update_handler* get_update_handlers();
+```
+
+An example usage is given above in the project's main loop.
+
+#### Graphics
+
+...
+
+#### Highscores
+
 ...
 
 ## Devices
@@ -44,14 +125,13 @@ static const double delta_score = POINTS_PER_SECOND * delta_time;
 void dino_step(dino_t* dino) {
     dino->speed.x += delta_speed;
     dino->position.x += dino->speed.x * delta_time;
-    
     dino->score += delta_score;
     
     // ...
 }
 ```
 
-**Keyboard:** Used for navigation in menus and player input during the game. A simple API was added that could be used either to check if a key was pressed or to consume a key if pressed (if the consume function is called twice, the second call will return false). Character keys would were returned in a pointer passed as argument:
+**Keyboard:** Used for navigation in menus and player input during the game. A simple API was added that could be used either to check if a key was pressed or to consume a key if pressed (if the consume function is called twice, the second call will return false). Character keys are returned in a pointer passed as argument:
 
 ```c
 // Jump if space is pressed
@@ -62,7 +142,7 @@ if (keyboard_consume(ESC, NULL)) state_pause();
 
 // Get a character input
 char c;
-if(keyboard_consume(CHARACTER, &c)) {
+if (keyboard_consume(CHARACTER, &c)) {
     // Do something with character
 }
 ```
@@ -86,7 +166,7 @@ void cursor_update() {
     position.y = cursor_update_within_range(position.y, -mouse_delta_y(), vg_get_height() - 1);
     state_set_cursor_position(position);
 
-    if (state_get_screen() == MENU && mouse_lb()) {**
+    if (state_get_screen() == MENU && mouse_lb()) {
         for (/* every button */) {
             if (button_get_x(button) >  position.x || button_get_y(button) > position.y) continue;
             if (button_get_x(button) + button_get_width(button) <  position.x ||
