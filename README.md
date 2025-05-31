@@ -1,5 +1,13 @@
 # debugassaurus
 
+<style>
+p {
+    text-align: justify;
+}
+</style>
+
+
+
 _debugassaurus_ is an endless runner inspired by the Google Chrome Dino game. The player must survive as long as possible while avoiding cacti and pterodactyls.
 
 Our version adds play/pause functionality and a high score board that records the seed used for each score. Players can replay specific runs by using a hidden feature: in the main menu, pressing a number key reveals a seed input field.
@@ -15,7 +23,7 @@ Video link
 
 ## Project Structure
 
-![Project Structure](./diagram.png)
+![](./diagram.png)
 
 The project follows an MVC pattern, and is therefore divided in three main modules: state, graphics and controller. As such, the logic in the main loop is reduced to these simples lines:
 
@@ -65,7 +73,7 @@ struct state {
             uint32_t seed;
             bool paused;
         } game;
-        
+
         // ...
     } data;
 };
@@ -133,7 +141,7 @@ void dino_step(dino_t* dino) {
     dino->speed.x += delta_speed;
     dino->position.x += dino->speed.x * delta_time;
     dino->score += delta_score;
-    
+
     // ...
 }
 ```
@@ -162,7 +170,7 @@ void cursor_update() {
     if (!mouse_ready()) return;
 
     cursor_position_t position = state_get_cursor_position();
-    
+
     position.x = cursor_update_within_range(position.x, mouse_delta_x(), vg_get_width() - 1);
     // For y displacement, the graphics driver disagrees with the mouse driver.
     // We opt to use the graphics driver's coordinate system, whose origin is at
@@ -175,7 +183,7 @@ void cursor_update() {
             if (button_get_x(button) >  position.x || button_get_y(button) > position.y) continue;
             if (button_get_x(button) + button_get_width(button) <  position.x ||
                 button_get_y(button) + button_get_height(button) < position.y) continue;
-            
+
             screen_t screen = button_get_screen(button);
             if (screen == MENU) state_menu();
             // ...
