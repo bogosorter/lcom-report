@@ -15,6 +15,8 @@ Video link
 
 ## Project Structure
 
+![Project Structure](./diagram.png)
+
 The project follows an MVC pattern, and is therefore divided in three main modules: state, graphics and controller. As such, the logic in the main loop is reduced to these simples lines:
 
 ```c
@@ -142,7 +144,8 @@ void dino_step(dino_t* dino) {
 // Jump if space is pressed
 if (keyboard_is_pressed(SPACE, NULL)) dino_jump(dino);
 
-// Pause game if esc is pressed. Esc will likely remain pressed for many frames and we only want to detect it once. As such, we consume it.
+// Pause game if esc is pressed. Esc will likely remain pressed for many frames
+// and we only want to detect it once. As such, we consume it.
 if (keyboard_consume(ESC, NULL)) state_pause();
 
 // Get a character input

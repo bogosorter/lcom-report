@@ -1,0 +1,57 @@
+@startuml
+allowmixing
+
+class Controller
+class Cursor
+class Collisions
+
+class State
+class Dino
+class World
+class Tile
+class BackgroundTile
+
+class Graphics
+
+class Highscores
+
+package Drivers {
+    class Timer
+    class KBC
+    class Keyboard
+    class Mouse
+    class VG
+    class RTC
+}
+
+rectangle "main.c" as Main
+
+Main --> State
+Main --> Controller
+Main --> Graphics
+
+Graphics ..> State
+
+Controller --> Collisions
+Controller --> Cursor
+Collisions ..> State
+Cursor ..> State
+
+State --> Dino
+State --> World
+World --> Tile
+World --> BackgroundTile
+
+State ..> Highscores
+Controller ..> Highscores
+
+Graphics ..> VG
+Main --> Timer
+Main --> Mouse
+Main --> Keyboard
+Mouse --> KBC
+Keyboard --> KBC
+Controller --> RTC
+Controller --> Keyboard
+
+@enduml
