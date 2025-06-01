@@ -107,7 +107,7 @@ The game is represented by a number of states (see above). The controller define
 
 #### Highscores
 
-...
+When the player loses he can insert a name to associate with that run. If the score of the run was in the top 5 scores, it will add it to the correct position in the leaderboard, showing its name, score, date and seed of the run.
 
 ## Devices
 
