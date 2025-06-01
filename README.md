@@ -95,7 +95,25 @@ _debugassaurus_ presents an interesting challenge in terms of world representati
 
 ### Graphics
 
-...
+The graphics module handles all visual output in _debugassaurus_, evolving from a simple wrapper around the `VBE` device driver into a dedicated renderer that translates game state into static frames with minimal overhead. Designed as the `View` in an MVC architecture, it remains a _“dumb”_ module—purely responsible for drawing sprites and text without any game logic—so controllers and models never need to know pixel‐level details.
+
+On startup, `graphics_init()` loads every XPM sprite (dinosaur frames, obstacles, background elements, UI text, mouse cursor, etc.) and initializes the video mode. From then on, the module exposes a small set of render `functions—graphics_render_menu()`, `graphics_render_scene()`, `graphics_render_pause()`, `graphics_render_game_over()`, and `graphics_render_highscores()`—each of which is itself composed of lower‐level drawing routines (e.g., `graphics_draw_dino()`, `graphics_draw_score()`, `graphics_render_string()`). By computing only object positions and issuing draw calls, the graphics module ensures efficient.
+
+**graphics_frame()**:
+The `graphics_frame()` function is the single‐entry point for rendering one complete frame. Called once per tick by the controller loop, it inspects the current `screen_t` in the state and dispatches to the appropriate render routine.
+
+```c
+int graphics_frame() {
+  screen_t screen = state_get_screen();
+
+  if (screen == MENU) return graphics_render_menu();
+  if (screen == GAME && state_is_paused()) return graphics_render_pause();
+  if (screen == GAME) return graphics_render_scene();
+  if (screen == GAME_OVER) return graphics_render_game_over();
+  if (screen == HIGHSCORES) return graphics_render_highscores();
+  return 0;
+}
+```
 
 ### Controller
 
