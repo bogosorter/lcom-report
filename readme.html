@@ -17,7 +17,7 @@ text-align: justify;
 <body class="markdown-body">
   <h1 id="debugassaurus">debugassaurus</h1>
   <p><em>debugassaurus</em> is an endless runner inspired by the Google
-  Chrome Dino game. The player must survive as long as possible while
+  Chrome’s Dino game. The player must survive as long as possible while
   avoiding cacti and pterodactyls.</p>
   <p>Our version adds play/pause functionality and a high score board
   that records the seed used for each score. Players can replay specific
@@ -76,11 +76,12 @@ make clean &amp;&amp; make &amp;&amp; lcom_run proj</code></pre>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
   <h3 id="state">State</h3>
   <p><em>debugassaurus</em> has multiple screens, each represented by a
-  screen_t enum value. Since each screen needs different state data -
-  e.g., the main menu tracks buttons, the game screen tracks the world
-  and dino - we use a union to save space. This requires care to avoid
-  accessing invalid fields. Shared variables like the current screen and
-  cursor position are stored outside the union.</p>
+  <code>screen_t</code> enum value. Since each screen needs different
+  state data - e.g., the main menu tracks buttons, the game screen
+  tracks the world and dino - we use a union to save space. This
+  requires care to avoid accessing invalid fields. Shared variables like
+  the current screen and cursor position are stored outside the
+  union.</p>
   <div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> state <span class="op">{</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Common types</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    screen_t screen<span class="op">;</span></span>
@@ -98,10 +99,8 @@ make clean &amp;&amp; make &amp;&amp; lcom_run proj</code></pre>
 <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// ...</span></span>
 <span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> data<span class="op">;</span></span>
 <span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-  <p>Externally, the state exposes getters and setters for its
-  variables, along with functions to switch screens, such as
-  <code>state_main_menu()</code> and
-  <code>state_highscores()</code>.</p>
+  <p>Externally, the state exposes getters, setters, and screen
+  switchers like <code>state_main_menu()</code>.</p>
   <h4 id="world-generation">World generation</h4>
   <p><em>debugassaurus</em> presents an interesting challenge in terms
   of world representation, since it is an endless runner. The obstacles
@@ -113,33 +112,66 @@ make clean &amp;&amp; make &amp;&amp; lcom_run proj</code></pre>
   world, and it will in fact always return a tile, as if all the tiles
   were pre-generated.</p>
   <h3 id="graphics">Graphics</h3>
-  <p>…</p>
+  <p>The graphics module handles all visual output in
+  <em>debugassaurus</em>, translating game state into static frames with
+  minimal overhead. Designed as the <code>View</code> in an MVC
+  architecture, it is a <em>“dumb”</em> module - purely responsible for
+  drawing sprites and text without any game logic.</p>
+  <p>On startup, <code>graphics_init()</code> loads every XPM sprite
+  (dinosaur frames, obstacles, background elements, UI text, mouse
+  cursor, etc.) and initializes the video mode. From then on, the module
+  leverages a small set of render functions:
+  <code>graphics_render_menu()</code>,
+  <code>graphics_render_scene()</code>,
+  <code>graphics_render_pause()</code>,
+  <code>graphics_render_game_over()</code>, and
+  <code>graphics_render_highscores()</code>. By computing only object
+  positions and issuing draw calls, the graphics module ensures
+  efficiency.</p>
+  <p>The <code>graphics_frame()</code> function is the single‐entry
+  point for rendering one complete frame. Called once per tick by
+  <code>main.c</code>, it inspects the current <code>screen_t</code> in
+  the state and dispatches to the appropriate render routine.</p>
+  <div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> graphics_frame<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  screen_t screen <span class="op">=</span> state_get_screen<span class="op">();</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>screen <span class="op">==</span> MENU<span class="op">)</span> <span class="cf">return</span> graphics_render_menu<span class="op">();</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>screen <span class="op">==</span> GAME <span class="op">&amp;&amp;</span> state_is_paused<span class="op">())</span> <span class="cf">return</span> graphics_render_pause<span class="op">();</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>screen <span class="op">==</span> GAME<span class="op">)</span> <span class="cf">return</span> graphics_render_scene<span class="op">();</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>screen <span class="op">==</span> GAME_OVER<span class="op">)</span> <span class="cf">return</span> graphics_render_game_over<span class="op">();</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>screen <span class="op">==</span> HIGHSCORES<span class="op">)</span> <span class="cf">return</span> graphics_render_highscores<span class="op">();</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
   <h3 id="controller">Controller</h3>
   <p>The game is represented by a number of states (see above). The
   controller defines an array of update handlers, whose index
   corresponds to the screen_t enum value. These handlers are called once
   every frame.</p>
   <h4 id="collisions">Collisions</h4>
-  <p>…</p>
+  <p>The collision detection system provides accurate collision
+  detection between the dino and various obstacles in the game. It uses
+  bounding boxes represented by the <code>bounding_box_t</code>
+  structure, which defines rectangular collision using x and y
+  coordinates and width and height dimensions. It also implements a
+  distance-based bound using the <code>COLLISIONS_DISTANCE</code>
+  constant in order to skip collision checks for obstacles too far
+  either behind or ahead of the dino. This improves performance by
+  reducing unnecessary calculations. The collision system integrates
+  with the game controller by calling <code>collision_collides()</code>
+  during the game updates in order to trigger game over conditions when
+  the dino hits an obstacle.</p>
   <h4 id="highscores">Highscores</h4>
-  <p>…</p>
+  <p>When the player loses, they can enter a name to associate with that
+  run. If the score of the run is among the top 5 scores, it will be
+  added to the correct position on the leaderboard, showing the name,
+  score, date, and seed of the run.</p>
+  <div class="page-break">
+
+  </div>
   <h2 id="devices">Devices</h2>
   <p><strong>Timer:</strong> Used for periodic rendering and keeping
   track of the time. Using the interrupt frequency, we were able to
   control the dino’s speed and score.</p>
-  <div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// main.c</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="dt">uint32_t</span> timer_frequency <span class="op">=</span> sys_hz<span class="op">();</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="dt">uint32_t</span> ticks_per_frame <span class="op">=</span> timer_frequency <span class="op">/</span> FPS<span class="op">;</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Setting up interrupt handlers</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>msg<span class="op">.</span>m_notify<span class="op">.</span>interrupts <span class="op">&amp;</span> timer_mask<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>timer_get_ticks<span class="op">();</span> <span class="op">==</span> ticks_per_frame<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        timer_set_ticks<span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Frame logic</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
   <p><strong>Keyboard:</strong> Used for navigation in menus and player
   input during the game. A simple API was added that could be used
   either to check if a key was pressed or to consume a key if pressed
@@ -149,8 +181,8 @@ make clean &amp;&amp; make &amp;&amp; lcom_run proj</code></pre>
   <div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Jump if space is pressed</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>keyboard_is_pressed<span class="op">(</span>SPACE<span class="op">,</span> NULL<span class="op">))</span> dino_jump<span class="op">(</span>dino<span class="op">);</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Pause game if esc is pressed. Esc will likely remain pressed for many frames</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">// and we only want to detect it once. As such, we consume it.</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Pause game if esc is pressed. Esc will likely remain pressed for many</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">// frames and we only want to detect it once. As such, we consume it.</span></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>keyboard_consume<span class="op">(</span>ESC<span class="op">,</span> NULL<span class="op">))</span> state_pause<span class="op">();</span></span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">// Get a character input</span></span>
@@ -158,47 +190,22 @@ make clean &amp;&amp; make &amp;&amp; lcom_run proj</code></pre>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>keyboard_consume<span class="op">(</span>CHARACTER<span class="op">,</span> <span class="op">&amp;</span>c<span class="op">))</span> <span class="op">{</span></span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Do something with character</span></span>
 <span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-  <p><strong>Mouse:</strong> Used for navigation in menus. Here’s an
-  excerpt from cursor.c:</p>
-  <div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> cursor_update<span class="op">()</span> <span class="op">{</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(!</span>mouse_ready<span class="op">())</span> <span class="cf">return</span><span class="op">;</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    cursor_position_t position <span class="op">=</span> state_get_cursor_position<span class="op">();</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    position<span class="op">.</span>x <span class="op">=</span> cursor_update_within_range<span class="op">(</span>position<span class="op">.</span>x<span class="op">,</span> mouse_delta_x<span class="op">(),</span> vg_get_width<span class="op">()</span> <span class="op">-</span> <span class="dv">1</span><span class="op">);</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    position<span class="op">.</span>y <span class="op">=</span> cursor_update_within_range<span class="op">(</span>position<span class="op">.</span>y<span class="op">,</span> <span class="op">-</span>mouse_delta_y<span class="op">(),</span> vg_get_height<span class="op">()</span> <span class="op">-</span> <span class="dv">1</span><span class="op">);</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    state_set_cursor_position<span class="op">(</span>position<span class="op">);</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>state_get_screen<span class="op">()</span> <span class="op">==</span> MENU <span class="op">&amp;&amp;</span> mouse_lb<span class="op">())</span> <span class="op">{</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span><span class="co">/* every button */</span><span class="op">)</span> <span class="op">{</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Check if the cursor is within the button&#39;s area</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>            screen_t screen <span class="op">=</span> button_get_screen<span class="op">(</span>button<span class="op">);</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>screen <span class="op">==</span> MENU<span class="op">)</span> state_menu<span class="op">();</span></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>            <span class="co">// ...</span></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+  <p><strong>Mouse:</strong> Used for navigation in menus.</p>
   <p><strong>Video Card:</strong> Used to display the game. We used the
   idexed mode 0x105, with the reasoning that only writing one byte per
   pixel improves the performance of the game. Our implementation uses
   page flipping to avoid visual artifacts.</p>
-  <div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Clear the second buffer</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>vg_clear<span class="op">();</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Other vg calls that draw the game</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">// ...</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Flip the buffers in between retraces</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>vg_flip<span class="op">();</span></span></code></pre></div>
+  <div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>vg_clear<span class="op">();</span> <span class="co">// Clear the second buffer</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Other vg calls that draw the game</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>vg_flip<span class="op">();</span> <span class="co">// Flip the buffers in between retraces</span></span></code></pre></div>
   <p><strong>Real Time Clock</strong> Used to get the date to be kept in
   a highscore. The simple API that is exposed is this:</p>
-  <div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> day<span class="op">;</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> month<span class="op">;</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> year<span class="op">;</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> date_t<span class="op">;</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> rtc_get_date<span class="op">(</span>date_t <span class="op">*</span>date<span class="op">);</span></span></code></pre></div>
+  <div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> day<span class="op">;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> month<span class="op">;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> year<span class="op">;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> date_t<span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> rtc_get_date<span class="op">(</span>date_t <span class="op">*</span>date<span class="op">);</span></span></code></pre></div>
 </body>
 </html>

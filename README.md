@@ -1,6 +1,6 @@
 # debugassaurus
 
-_debugassaurus_ is an endless runner inspired by the Google Chrome Dino game. The player must survive as long as possible while avoiding cacti and pterodactyls.
+_debugassaurus_ is an endless runner inspired by the Google Chrome's Dino game. The player must survive as long as possible while avoiding cacti and pterodactyls.
 
 Our version adds play/pause functionality and a high score board that records the seed used for each score. Players can replay specific runs by using a hidden feature: in the main menu, pressing a number key reveals a seed input field.
 
@@ -65,7 +65,7 @@ while (state_get_screen() != EXIT) {
 
 ### State
 
-_debugassaurus_ has multiple screens, each represented by a screen_t enum value. Since each screen needs different state data - e.g., the main menu tracks buttons, the game screen tracks the world and dino - we use a union to save space. This requires care to avoid accessing invalid fields. Shared variables like the current screen and cursor position are stored outside the union.
+_debugassaurus_ has multiple screens, each represented by a `screen_t` enum value. Since each screen needs different state data - e.g., the main menu tracks buttons, the game screen tracks the world and dino - we use a union to save space. This requires care to avoid accessing invalid fields. Shared variables like the current screen and cursor position are stored outside the union.
 
 ```c
 struct state {
@@ -87,7 +87,7 @@ struct state {
 };
 ```
 
-Externally, the state exposes getters and setters for its variables, along with functions to switch screens, such as `state_main_menu()` and `state_highscores()`.
+Externally, the state exposes getters, setters, and screen switchers like `state_main_menu()`.
 
 #### World generation
 
@@ -95,12 +95,11 @@ _debugassaurus_ presents an interesting challenge in terms of world representati
 
 ### Graphics
 
-The graphics module handles all visual output in _debugassaurus_, evolving from a simple wrapper around the `VBE` device driver into a dedicated renderer that translates game state into static frames with minimal overhead. Designed as the `View` in an MVC architecture, it remains a _“dumb”_ module—purely responsible for drawing sprites and text without any game logic—so controllers and models never need to know pixel‐level details.
+The graphics module handles all visual output in _debugassaurus_, translating game state into static frames with minimal overhead. Designed as the `View` in an MVC architecture, it is a _“dumb”_ module - purely responsible for drawing sprites and text without any game logic.
 
-On startup, `graphics_init()` loads every XPM sprite (dinosaur frames, obstacles, background elements, UI text, mouse cursor, etc.) and initializes the video mode. From then on, the module exposes a small set of render `functions—graphics_render_menu()`, `graphics_render_scene()`, `graphics_render_pause()`, `graphics_render_game_over()`, and `graphics_render_highscores()`—each of which is itself composed of lower‐level drawing routines (e.g., `graphics_draw_dino()`, `graphics_draw_score()`, `graphics_render_string()`). By computing only object positions and issuing draw calls, the graphics module ensures efficient.
+On startup, `graphics_init()` loads every XPM sprite (dinosaur frames, obstacles, background elements, UI text, mouse cursor, etc.) and initializes the video mode. From then on, the module leverages a small set of render functions: `graphics_render_menu()`, `graphics_render_scene()`, `graphics_render_pause()`, `graphics_render_game_over()`, and `graphics_render_highscores()`. By computing only object positions and issuing draw calls, the graphics module ensures efficiency.
 
-**graphics_frame()**:
-The `graphics_frame()` function is the single‐entry point for rendering one complete frame. Called once per tick by the controller loop, it inspects the current `screen_t` in the state and dispatches to the appropriate render routine.
+The `graphics_frame()` function is the single‐entry point for rendering one complete frame. Called once per tick by `main.c`, it inspects the current `screen_t` in the state and dispatches to the appropriate render routine.
 
 ```c
 int graphics_frame() {
@@ -121,31 +120,17 @@ The game is represented by a number of states (see above). The controller define
 
 #### Collisions
 
-The collision detection system provides accurate collision detection between the dino and various obstacles in the game. It uses bounding boxes represented by the `bounding_box_t` structure, wich defines rectangular collision using x and y coordinates and width and height dimensions. It also implements a distance-based bound using the `COLLISIONS_DISTANCE` constant in order to skip collision checks for obstacles too far either behind or ahead of the dino. This improves performance by reducing unnecessary calculations. The collision system integrates with the game controller by calling `collision_collides()` during the game updates in order to trigger game over conditions when the dino hits an obstacle.
+The collision detection system provides accurate collision detection between the dino and various obstacles in the game. It uses bounding boxes represented by the `bounding_box_t` structure, which defines rectangular collision using x and y coordinates and width and height dimensions. It also implements a distance-based bound using the `COLLISIONS_DISTANCE` constant in order to skip collision checks for obstacles too far either behind or ahead of the dino. This improves performance by reducing unnecessary calculations. The collision system integrates with the game controller by calling `collision_collides()` during the game updates in order to trigger game over conditions when the dino hits an obstacle.
 
 #### Highscores
 
 When the player loses, they can enter a name to associate with that run. If the score of the run is among the top 5 scores, it will be added to the correct position on the leaderboard, showing the name, score, date, and seed of the run.
 
+<div class="page-break"></div>
+
 ## Devices
 
 **Timer:** Used for periodic rendering and keeping track of the time. Using the interrupt frequency, we were able to control the dino's speed and score.
-
-```c
-// main.c
-
-uint32_t timer_frequency = sys_hz();
-uint32_t ticks_per_frame = timer_frequency / FPS;
-
-// Setting up interrupt handlers
-
-if (msg.m_notify.interrupts & timer_mask) {
-    if (timer_get_ticks(); == ticks_per_frame) {
-        timer_set_ticks(0);
-        // Frame logic
-    }
-}
-```
 
 **Keyboard:** Used for navigation in menus and player input during the game. A simple API was added that could be used either to check if a key was pressed or to consume a key if pressed (if the consume function is called twice, the second call will return false). Character keys are returned in a pointer passed as argument:
 
@@ -153,8 +138,8 @@ if (msg.m_notify.interrupts & timer_mask) {
 // Jump if space is pressed
 if (keyboard_is_pressed(SPACE, NULL)) dino_jump(dino);
 
-// Pause game if esc is pressed. Esc will likely remain pressed for many frames
-// and we only want to detect it once. As such, we consume it.
+// Pause game if esc is pressed. Esc will likely remain pressed for many
+// frames and we only want to detect it once. As such, we consume it.
 if (keyboard_consume(ESC, NULL)) state_pause();
 
 // Get a character input
@@ -164,41 +149,14 @@ if (keyboard_consume(CHARACTER, &c)) {
 }
 ```
 
-**Mouse:** Used for navigation in menus. Here's an excerpt from cursor.c:
-
-```c
-void cursor_update() {
-    if (!mouse_ready()) return;
-
-    cursor_position_t position = state_get_cursor_position();
-
-    position.x = cursor_update_within_range(position.x, mouse_delta_x(), vg_get_width() - 1);
-    position.y = cursor_update_within_range(position.y, -mouse_delta_y(), vg_get_height() - 1);
-    state_set_cursor_position(position);
-
-    if (state_get_screen() == MENU && mouse_lb()) {
-        for (/* every button */) {
-            // Check if the cursor is within the button's area
-
-            screen_t screen = button_get_screen(button);
-            if (screen == MENU) state_menu();
-            // ...
-        }
-    }
-}
-```
+**Mouse:** Used for navigation in menus.
 
 **Video Card:** Used to display the game. We used the idexed mode 0x105, with the reasoning that only writing one byte per pixel improves the performance of the game. Our implementation uses page flipping to avoid visual artifacts.
 
 ```c
-// Clear the second buffer
-vg_clear();
-
+vg_clear(); // Clear the second buffer
 // Other vg calls that draw the game
-// ...
-
-// Flip the buffers in between retraces
-vg_flip();
+vg_flip(); // Flip the buffers in between retraces
 ```
 
 **Real Time Clock** Used to get the date to be kept in a highscore. The simple API that is exposed is this:
