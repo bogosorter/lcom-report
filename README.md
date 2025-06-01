@@ -106,7 +106,7 @@ update_handler* get_update_handlers();
 
 An example usage is given above in the project's main loop.
 
-#### Graphics
+#### Collisions
 
 ...
 
