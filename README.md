@@ -103,7 +103,7 @@ The game is represented by a number of states (see above). The controller define
 
 #### Collisions
 
-...
+The collision detection system provides accurate collision detection between the dino and various obstacles in the game. It uses bounding boxes represented by the `bounding_box_t` structure, wich defines rectangular collision ares using x and y coordinates and width and height dimensions. It also implements a distance-based bound using the `COLLISIONS_DISTANCE` constant in order to skip collision checks for obstacles too far either behind or ahead of the dino, this improves performance by reducing unnecessary calculations. The collision system integrates with the game controller by calling `collision_collides()` during the game updates in order too trigger game over conditions when the dino hits an obstacle.
 
 #### Highscores
 
