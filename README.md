@@ -6,58 +6,66 @@ Our version adds play/pause functionality and a high score board that records th
 
 ## Screenshots
 
-![Main Menu](./images/Captura%20de%20ecrã%202025-05-31%20153224.png)
+<style>
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: auto;
+}
+.image-grid img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+.page-break {
+  page-break-before: always; /* or page-break-after: always; */
+}
+</style>
 
-![Gameplay](./images/Captura%20de%20ecrã%202025-05-31%20153908.png)
-
-![Play/Pause](./images/Captura%20de%20ecrã%202025-05-31%20153321.png)
-
-![High Scores](./images/Captura%20de%20ecrã%202025-05-31%20153151.png)
-
-![Record Highscore](./images/Captura%20de%20ecrã%202025-05-31%20153927.png)
-
-![Seed Feature](./images/Captura%20de%20ecrã%202025-05-31%20153251.png)
+<div class="image-grid"><img src="./images/Captura%20de%20ecrã%202025-05-31%20153224.png" alt="Image 1"><img src="./images/Captura%20de%20ecrã%202025-05-31%20153908.png" alt="Image 2"><img src="./images/Captura%20de%20ecrã%202025-05-31%20153321.png" alt="Image 3"><img src="./images/Captura%20de%20ecrã%202025-05-31%20153151.png" alt="Image 4"><img src="./images/Captura%20de%20ecrã%202025-05-31%20153927.png" alt="Image 5"><img src="./images/Captura%20de%20ecrã%202025-05-31%20153251.png" alt="Image 6"></div>
 
 ## Video link
 
 To watch our demo video [click here](https://uporto.cloud.panopto.eu/Panopto/Pages/Viewer.aspx?id=1e4335f1-e450-409f-bbb0-b2ee01204623)
+
+## Running
+
+```
+cd src
+make clean && make && lcom_run proj
+```
 
 ## Controls
 
 - `space` to jump. If `space` remains pressed the dino will keep jumping
 - `esc` to pause
 
+<div class="page-break"></div>
+
 ## Project Structure
 
 ![](./diagram.png)
 
-The project follows an MVC pattern, and is therefore divided in three main modules: state, graphics and controller. As such, the logic in the main loop is reduced to these simples lines:
+The project follows an MVC pattern, and is therefore divided in three main modules: state, graphics and controller. As such, most of the logic in the main loop is reduced to these simples lines:
 
 ```c
-int(proj_main_loop)(int argc, char* argv []) {
-    // Initialize drivers
+state_menu();
+update_handler* handlers = get_update_handlers();
+while (state_get_screen() != EXIT) {
+    // Handle interrupts
     // ...
 
-    state_menu();
-    cursor_reset();
-
-    update_handler* handlers = get_update_handlers();
-    while (state_get_screen() != EXIT) {
-        // Handle interrupts
-        // ...
-
-        // Once every frame
-        handlers[state_get_screen()]();
-        graphics_frame();
-    }
-
-    // Unmount drivers
+    // Once every frame
+    handlers[state_get_screen()]();
+    graphics_frame();
 }
 ```
 
 ### State
 
-_debugassaurus_ has various screens. Each of those is represented as a variable in the `screen_t` enum. Each of those screens, though, needs a different representation of the state. The main menu, for instance, needs to know which buttons exist, while the game screen need to know what the world looks like and where the dino is. We could use a number of unused fields in a structure, but that would be a waste of space. Instead, we opt to use a union to represent the different states of the game. The problem this creates is that one must be careful to not access wrong fields in the union. Common variables (current screen and cursor position, which should be kept accross screens) are stored outside the union.
+_debugassaurus_ has multiple screens, each represented by a screen_t enum value. Since each screen needs different state data - e.g., the main menu tracks buttons, the game screen tracks the world and dino - we use a union to save space. This requires care to avoid accessing invalid fields. Shared variables like the current screen and cursor position are stored outside the union.
 
 ```c
 struct state {
@@ -66,12 +74,6 @@ struct state {
     cursor_position_t cursor;
 
     union {
-        struct {
-            uint8_t button_count;
-            button_t** buttons;
-            char seed_input[16];
-        } menu;
-
         struct {
             dino_t* dino;
             tile_t* first_tile;
@@ -85,11 +87,11 @@ struct state {
 };
 ```
 
-Externally, the state exposes a set of getters and setters that give access to the state variables. There are also some functions that allow to switch between different states, like `state_main_menu()` and `state_highscores()`.
+Externally, the state exposes getters and setters for its variables, along with functions to switch screens, such as `state_main_menu()` and `state_highscores()`.
 
 #### World generation
 
-_debugassaurus_ presents an interesting challenge in terms of world representation, since it is an endless runner. The obstacles are represented as a linked list of `tile`s. While the `tile` class tile would be enough, the `world` class abstracts the world creation logic. This way, parts of the program that do not know about the state internals can call `world_get_next(tile_t* tile)` to get the next tile in the world, and it will in fact always return a tile, as if all the tiles were pre-generated.
+_debugassaurus_ presents an interesting challenge in terms of world representation, since it is an endless runner. The obstacles are represented as a linked list of `tile`s. While the `tile` class tile would be enough, the `world` class abstracts the world creation logic. This way, parts of the program that do not know about the state's internals can call `world_get_next(tile_t* tile)` to get the next tile in the world, and it will in fact always return a tile, as if all the tiles were pre-generated.
 
 ### Graphics
 
@@ -97,14 +99,7 @@ _debugassaurus_ presents an interesting challenge in terms of world representati
 
 ### Controller
 
-The game is represented by a number of states (see above). For each of those states, the controller defines an update handler whose index is the same as the screen_t enum value. The update handler should be called once every frame.
-
-```c
-typedef void (*update_handler)();
-update_handler* get_update_handlers();
-```
-
-An example usage is given above in the project's main loop.
+The game is represented by a number of states (see above). The controller defines an array of update handlers, whose index corresponds to the screen_t enum value. These handlers are called once every frame.
 
 #### Collisions
 
@@ -125,30 +120,12 @@ uint32_t timer_frequency = sys_hz();
 uint32_t ticks_per_frame = timer_frequency / FPS;
 
 // Setting up interrupt handlers
-// ...
 
 if (msg.m_notify.interrupts & timer_mask) {
-    uint32_t ticks = timer_get_ticks();
-    if (ticks == ticks_per_frame) {
+    if (timer_get_ticks(); == ticks_per_frame) {
         timer_set_ticks(0);
         // Frame logic
     }
-}
-
-// dino.c
-
-static const double delta_time = 1 / (double) FPS;
-static const double delta_speed = DINO_SPEED_INCREMENT * delta_time;
-static const double delta_score = POINTS_PER_SECOND * delta_time;
-
-// ...
-
-void dino_step(dino_t* dino) {
-    dino->speed.x += delta_speed;
-    dino->position.x += dino->speed.x * delta_time;
-    dino->score += delta_score;
-
-    // ...
 }
 ```
 
@@ -178,17 +155,12 @@ void cursor_update() {
     cursor_position_t position = state_get_cursor_position();
 
     position.x = cursor_update_within_range(position.x, mouse_delta_x(), vg_get_width() - 1);
-    // For y displacement, the graphics driver disagrees with the mouse driver.
-    // We opt to use the graphics driver's coordinate system, whose origin is at
-    // the top-left corner.
     position.y = cursor_update_within_range(position.y, -mouse_delta_y(), vg_get_height() - 1);
     state_set_cursor_position(position);
 
     if (state_get_screen() == MENU && mouse_lb()) {
         for (/* every button */) {
-            if (button_get_x(button) >  position.x || button_get_y(button) > position.y) continue;
-            if (button_get_x(button) + button_get_width(button) <  position.x ||
-                button_get_y(button) + button_get_height(button) < position.y) continue;
+            // Check if the cursor is within the button's area
 
             screen_t screen = button_get_screen(button);
             if (screen == MENU) state_menu();

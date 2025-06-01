@@ -1,57 +1,124 @@
 @startuml
 allowmixing
 
-class Controller
-class Cursor
-class Collisions
+left to right direction
 
-class State
-class Dino
-class World
-class Tile
-class BackgroundTile
-
-class Graphics
-
-class Highscores
-
-package Drivers {
-    class Timer
-    class KBC
-    class Keyboard
-    class Mouse
-    class VG
-    class RTC
+    class "Controller" as ControllerClass {
+        +get_update_handlers()
+    }
+    class Cursor {
+        +reset()
+        +update()
+    }
+    class Collisions {
+        +collides()
+    }
+    class "State" as StateClass {
+        +menu()
+        +game()
+        +game_over()
+        +exit()
+        +highscore()
+    }
+    class Dino {
+        +new()
+        +step(dino_t*)
+        +jump(dino_t*)
+    }
+    class World {
+        +get_first(int)
+        +get_next(tile_t*)
+        +get_first_background()
+        +get_next_background(background_tile_t*)
+        +free(tile_t*)
+        +free_background(background_tile_t*)
+    }
+    class Tile {
+        +create(tile_type_t, int)
+        +set_next(tile_t*, tile_t*)
+    }
+    class BackgroundTile {
+        +create(background_tile_type_t, int)
+        +set_next(background_tile_t*, background_tile_t*)
+    }
+    class Button {
+        +create(uint16_t, uint16_t, uint16_t, uint16_t, screen_t)
+    }
+class Graphics {
+        +init(mode_t, uint32_t)
+        +frame()
+        +exit()
+    }
+class Highscores {
+    +register(score_t*)
 }
-
+package Drivers {
+    class Timer {
+        +get_ticks()
+        +set_ticks(uint32_t)
+    }
+    class KBC {
+        +read_buffer(uint8_t*)
+        +write_buffer(uint8_t)
+    }
+    class Keyboard {
+        +is_pressed(keytype_t, char*)
+        +consume(keytype_t, char*)
+        +subscribe_int(uint32_t*)
+        +unsubscribe_int()
+        +int_handler()
+    }
+    class Mouse {
+        +enable_data()
+        +disable_data()
+        +subscribe_int(uint32_t*)
+        +unsubscribe_int()
+        +int_handler()
+        +ready()
+        +rb()
+        +mb()
+        +lb()
+        +delta_x()
+        +delta_y()
+        +x_ovfl()
+        +y_ovfl()
+    }
+    class VG {
+        +init(uint16_t)
+        +set_background(uint32_t)
+        +clear()
+        +flip()
+        +draw_opaque_sprite(xpm_image_t, int16_t, int16_t)
+        +draw_transparent_sprite(xpm_image_t, int16_t, int16_t)
+        +draw_rect(uint16_t, uint16_t, uint16_t, uint16_t, uint32_t)
+    }
+    class RTC {
+        +get_date(date_t*)
+    }
+}
 rectangle "main.c" as Main
-
-Main --> State
-Main --> Controller
+Main --> StateClass
+Main --> ControllerClass
 Main --> Graphics
-
-Graphics ..> State
-
-Controller --> Collisions
-Controller --> Cursor
-Collisions ..> State
-Cursor ..> State
-
-State --> Dino
-State --> World
+Graphics ..> StateClass
+Graphics ..> VG
+ControllerClass --> Collisions
+ControllerClass --> Cursor
+ControllerClass --> Keyboard
+ControllerClass ..> RTC
+ControllerClass ..> Highscores
+Cursor ..> StateClass
+Collisions ..> StateClass
+StateClass --> Dino
+StateClass --> World
+StateClass --> Button
+StateClass --> Highscores
 World --> Tile
 World --> BackgroundTile
-
-State ..> Highscores
-Controller ..> Highscores
-
-Graphics ..> VG
 Main --> Timer
 Main --> Mouse
 Main --> Keyboard
 Mouse --> KBC
 Keyboard --> KBC
-Controller --> RTC
-Controller --> Keyboard
-
+Cursor --> Mouse
 @enduml
