@@ -107,7 +107,7 @@ The collision detection system provides accurate collision detection between the
 
 #### Highscores
 
-When the player loses he can insert a name to associate with that run. If the score of the run was in the top 5 scores, it will add it to the correct position in the leaderboard, showing its name, score, date and seed of the run.
+When the player loses, they can enter a name to associate with that run. If the score of the run is among the top 5 scores, it will be added to the correct position on the leaderboard, showing the name, score, date, and seed of the run.
 
 ## Devices
 
